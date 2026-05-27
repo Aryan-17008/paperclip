@@ -1423,7 +1423,7 @@ export function IssueDetail() {
           onSave={(description) => updateIssue.mutateAsync({ description })}
           as="p"
           className="text-[15px] leading-7 text-foreground"
-          placeholder="Add a description..."
+          placeholder="No description"
           multiline
           mentions={mentionOptions}
           imageUploadHandler={async (file) => {
