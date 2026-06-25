@@ -34,6 +34,7 @@ export const queryKeys = {
       ["issues", companyId, "search", q, projectId ?? "__all-projects__", limit ?? "__no-limit__"] as const,
     listAssignedToMe: (companyId: string) => ["issues", companyId, "assigned-to-me"] as const,
     listMineByMe: (companyId: string) => ["issues", companyId, "mine-by-me"] as const,
+    listCreatedByMe: (companyId: string) => ["issues", companyId, "created-by-me"] as const,
     listTouchedByMe: (companyId: string) => ["issues", companyId, "touched-by-me"] as const,
     listUnreadTouchedByMe: (companyId: string) => ["issues", companyId, "unread-touched-by-me"] as const,
     labels: (companyId: string) => ["issues", companyId, "labels"] as const,
@@ -97,6 +98,8 @@ export const queryKeys = {
     generalSettings: ["instance", "general-settings"] as const,
     schedulerHeartbeats: ["instance", "scheduler-heartbeats"] as const,
     experimentalSettings: ["instance", "experimental-settings"] as const,
+    modelRouterSettings: ["instance", "model-router-settings"] as const,
+    routingDecisions: (companyId: string) => ["routing-decisions", companyId] as const,
   },
   health: ["health"] as const,
   secrets: {
@@ -146,5 +149,10 @@ export const queryKeys = {
   },
   adapters: {
     all: ["adapters"] as const,
+  },
+  chat: {
+    agents: (companyId: string) => ["chat", "agents", companyId] as const,
+    routingStats: (companyId: string) => ["chat", "routing-stats", companyId] as const,
+    costTrends: (companyId: string, days?: number) => ["chat", "cost-trends", companyId, days ?? 14] as const,
   },
 };

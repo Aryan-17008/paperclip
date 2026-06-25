@@ -11,6 +11,8 @@ import {
   Boxes,
   Repeat,
   Settings,
+  MessageSquare,
+  GitBranch,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { SidebarSection } from "./SidebarSection";
@@ -98,7 +100,9 @@ export function Sidebar() {
         </div>
 
         <SidebarSection label="Work">
+          <SidebarNavItem to="/chat" label="AI Chat" icon={MessageSquare} />
           <SidebarNavItem to="/issues" label="Issues" icon={CircleDot} />
+          <SidebarNavItem to="/issue-tracker" label="My Issues" icon={CircleDot} />
           <SidebarNavItem to="/routines" label="Routines" icon={Repeat} textBadge="Beta" textBadgeTone="amber" />
           <SidebarNavItem to="/goals" label="Goals" icon={Target} />
         </SidebarSection>
@@ -111,6 +115,7 @@ export function Sidebar() {
           <SidebarNavItem to="/org" label="Org" icon={Network} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
           <SidebarNavItem to="/costs" label="Costs" icon={DollarSign} />
+          <SidebarNavItem to="/model-router" label="Model Router" icon={GitBranch} />
           <SidebarNavItem to="/activity" label="Activity" icon={History} />
           <SidebarNavItem to="/company/settings" label="Settings" icon={Settings} />
         </SidebarSection>

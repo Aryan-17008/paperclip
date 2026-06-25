@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World - Paperclip</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            padding: 2rem;
+        }
+
+        .greeting-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            padding: 3rem 4rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: translateY(0);
+            animation: float 3s ease-in-out infinite;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 8px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: white;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Popup Styles */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .popup-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .popup {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.7);
+            transition: transform 0.3s ease;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .popup-overlay.active .popup {
+            transform: scale(1);
+        }
+
+        .popup-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .popup h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .popup p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        .popup-close {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 35px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .popup-close:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Fun Facts */
+        .fact-list {
+            text-align: left;
+            margin: 1rem 0;
+        }
+
+        .fact-list li {
+            padding: 8px 0;
+            color: #555;
+            list-style: none;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .fact-list li::before {
+            content: "💡";
+            position: absolute;
+            left: 0;
+        }
+
+        /* Confetti */
+        .confetti-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            display: none;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            animation: confettiFall linear forwards;
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100px) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* Floating particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: particleFloat linear infinite;
+        }
+
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100px) scale(1);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="greeting-card">
+            <h1>Hello, World! 👋</h1>
+            <p class="subtitle">Welcome to your Paperclip-powered website</p>
+            
+            <button class="btn btn-primary" onclick="showWelcomePopup()">
+                🎉 Welcome Me
+            </button>
+            <button class="btn btn-secondary" onclick="showFactsPopup()">
+                💡 Fun Facts
+            </button>
+            <button class="btn btn-success" onclick="showCelebration()">
+                🎊 Celebrate
+            </button>
+        </div>
+    </div>
+
+    <!-- Welcome Popup -->
+    <div class="popup-overlay" id="welcomePopup">
+        <div class="popup">
+            <div class="popup-icon">🎉</div>
+            <h2>Welcome!</h2>
+            <p>You've successfully created an interactive Hello World website using Paperclip's AI agent system. This page was generated by your QA Lead agent!</p>
+            <button class="popup-close" onclick="closePopup('welcomePopup')">Awesome!</button>
+        </div>
+    </div>
+
+    <!-- Fun Facts Popup -->
+    <div class="popup-overlay" id="factsPopup">
+        <div class="popup">
+            <div class="popup-icon">💡</div>
+            <h2>Fun Facts</h2>
+            <ul class="fact-list">
+                <li>The first "Hello, World!" program was written by Brian Kernighan in 1972</li>
+                <li>HTML was created by Tim Berners-Lee in 1993</li>
+                <li>JavaScript was created in just 10 days by Brendan Eich</li>
+                <li>CSS was first proposed by Håkon Wium Lie in 1994</li>
+                <li>This website was built by an AI agent! 🤖</li>
+            </ul>
+            <button class="popup-close" onclick="closePopup('factsPopup')">Cool!</button>
+        </div>
+    </div>
+
+    <!-- Celebration Popup -->
+    <div class="popup-overlay" id="celebrationPopup">
+        <div class="popup">
+            <div class="popup-icon">🎊</div>
+            <h2>Congratulations!</h2>
+            <p>You've just experienced the power of AI-driven development. Your agent understood your request and built this interactive website with animations, popups, and visual effects!</p>
+            <button class="popup-close" onclick="closePopup('celebrationPopup')">Let's Build More!</button>
+        </div>
+    </div>
+
+    <!-- Confetti Container -->
+    <div class="confetti-container" id="confetti"></div>
+
+    <script>
+        // Create floating particles
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDuration = (Math.random() * 10 + 10) + 's';
+                particle.style.animationDelay = (Math.random() * 10) + 's';
+                particle.style.width = (Math.random() * 8 + 4) + 'px';
+                particle.style.height = particle.style.width;
+                container.appendChild(particle);
+            }
+        }
+
+        // Popup functions
+        function showWelcomePopup() {
+            showPopup('welcomePopup');
+        }
+
+        function showFactsPopup() {
+            showPopup('factsPopup');
+        }
+
+        function showCelebration() {
+            createConfetti();
+            setTimeout(() => showPopup('celebrationPopup'), 500);
+        }
+
+        function showPopup(id) {
+            document.getElementById(id).classList.add('active');
+        }
+
+        function closePopup(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+
+        // Confetti effect
+        function createConfetti() {
+            const container = document.getElementById('confetti');
+            container.style.display = 'block';
+            container.innerHTML = '';
+            
+            const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe', '#ffd700', '#ff6b6b'];
+            
+            for (let i = 0; i < 100; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                confetti.style.animationDelay = (Math.random() * 2) + 's';
+                confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                container.appendChild(confetti);
+            }
+
+            setTimeout(() => {
+                container.style.display = 'none';
+            }, 6000);
+        }
+
+        // Close popups on overlay click
+        document.querySelectorAll('.popup-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+
+        // Initialize
+        createParticles();
+
+        // Show welcome popup on page load after 1 second
+        setTimeout(showWelcomePopup, 1000);
+    </script>
+</body>
+</html>

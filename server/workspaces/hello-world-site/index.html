@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="gradient-bg"></div>
+    
+    <div class="container">
+        <div class="greeting-card">
+            <h1 class="greeting-title">Hello World!</h1>
+            <p class="greeting-subtitle">Welcome to my interactive page</p>
+            <div class="button-group">
+                <button class="btn btn-primary" id="infoBtn">Fun Facts</button>
+                <button class="btn btn-secondary" id="celebrateBtn">Celebrate!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Popup -->
+    <div class="popup-overlay" id="welcomePopup">
+        <div class="popup">
+            <div class="popup-header">
+                <h2>Welcome!</h2>
+                <button class="popup-close" data-popup="welcomePopup">&times;</button>
+            </div>
+            <div class="popup-body">
+                <p>Thanks for visiting my Hello World page! This is a fully interactive demo with smooth animations and responsive design.</p>
+            </div>
+            <div class="popup-footer">
+                <button class="btn btn-primary popup-close-btn" data-popup="welcomePopup">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Popup -->
+    <div class="popup-overlay" id="infoPopup">
+        <div class="popup">
+            <div class="popup-header">
+                <h2>Fun Facts</h2>
+                <button class="popup-close" data-popup="infoPopup">&times;</button>
+            </div>
+            <div class="popup-body">
+                <ul class="fun-facts">
+                    <li>The first computer bug was an actual moth found in a Harvard Mark II computer in 1947.</li>
+                    <li>The term "Hello World" was first used in 1972 in a book by Brian Kernighan.</li>
+                    <li>JavaScript was created in just 10 days by Brendan Eich in 1995.</li>
+                    <li>The first website is still online at info.cern.ch.</li>
+                    <li>There are over 1.9 billion websites on the internet today.</li>
+                </ul>
+            </div>
+            <div class="popup-footer">
+                <button class="btn btn-primary popup-close-btn" data-popup="infoPopup">Awesome!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hi</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      color: white;
+    }
+    .card {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(15px);
+      padding: 3rem 4rem;
+      border-radius: 24px;
+      text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      animation: popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      max-width: 90vw;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.8) translateY(30px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    h1 {
+      font-size: 3.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 2px 15px rgba(0,0,0,0.3);
+      letter-spacing: -1px;
+    }
+    p {
+      font-size: 1.3rem;
+      opacity: 0.95;
+      font-weight: 300;
+    }
+    .emoji {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      display: block;
+      animation: wave 2s ease-in-out infinite;
+    }
+    @keyframes wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(20deg); }
+      75% { transform: rotate(-20deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="emoji">👋</span>
+    <h1>Hi</h1>
+    <p>Welcome to my awesome web page!</p>
+  </div>
+</body>
+</html>

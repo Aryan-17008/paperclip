@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hidden Leaf Village - Team 7</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto Condensed', sans-serif;
+      background-color: #0a0a0a;
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background-color: #ff6b00;
+      padding: 1.5rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      box-shadow: 0 4px 20px rgba(255, 107, 0, 0.4);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(0,0,0,0.05) 10px,
+        rgba(0,0,0,0.05) 20px
+      );
+    }
+
+    .leaf-symbol {
+      width: 60px;
+      height: 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .leaf-symbol svg {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+    }
+
+    .header h1 {
+      font-family: 'Bangers', cursive;
+      font-size: 2.5rem;
+      letter-spacing: 3px;
+      text-shadow: 3px 3px 0 #000;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Main container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    .section-title {
+      text-align: center;
+      font-family: 'Bangers', cursive;
+      font-size: 2rem;
+      color: #ff6b00;
+      margin-bottom: 2rem;
+      text-shadow: 2px 2px 0 #000;
+      letter-spacing: 2px;
+    }
+
+    /* Character cards grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 2rem;
+      margin-bottom: 3rem;
+    }
+
+    .card {
+      background-color: #1a1a1a;
+      border: 3px solid #ff6b00;
+      border-radius: 16px;
+      overflow: hidden;
+      transition: transform 0.3s, box-shadow 0.3s;
+      position: relative;
+    }
+
+    .card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 30px rgba(255, 107, 0, 0.3);
+    }
+
+    .card-image {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-bottom: 3px solid #ff6b00;
+      background-color: #2a2a2a;
+    }
+
+    .card-content {
+      padding: 1.5rem;
+    }
+
+    .card-name {
+      font-family: 'Bangers', cursive;
+      font-size: 1.6rem;
+      color: #ff6b00;
+      margin-bottom: 0.5rem;
+      letter-spacing: 1px;
+    }
+
+    .card-rank {
+      display: inline-block;
+      background-color: #ff6b00;
+      color: #000;
+      font-weight: 700;
+      padding: 0.2rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .stats {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-label {
+      font-size: 0.9rem;
+      color: #aaa;
+    }
+
+    .stat-bar-bg {
+      width: 60%;
+      height: 10px;
+      background-color: #333;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .stat-bar-fill {
+      height: 100%;
+      background-color: #ff6b00;
+      border-radius: 5px;
+      transition: width 1s ease-out;
+    }
+
+    /* Join Team 7 Button */
+    .cta-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .cta-button {
+      font-family: 'Bangers', cursive;
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      background-color: #ff6b00;
+      color: #000;
+      border: none;
+      padding: 1rem 3rem;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(255, 107, 0, 0.4);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .cta-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 30px rgba(255, 107, 0, 0.6);
+    }
+
+    .cta-button:active {
+      transform: scale(0.98);
+    }
+
+    /* Popup overlay */
+    .popup-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s;
+    }
+
+    .popup-overlay.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .popup {
+      background-color: #1a1a1a;
+      border: 3px solid #ff6b00;
+      border-radius: 20px;
+      padding: 2.5rem;
+      max-width: 450px;
+      width: 90%;
+      position: relative;
+      animation: slideUp 0.4s;
+      box-shadow: 0 20px 60px rgba(255, 107, 0, 0.3);
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .popup h2 {
+      font-family: 'Bangers', cursive;
+      font-size: 1.8rem;
+      color: #ff6b00;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      letter-spacing: 2px;
+    }
+
+    .form-group {
+      margin-bottom: 1.2rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.4rem;
+      font-weight: 700;
+      color: #ccc;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border: 2px solid #444;
+      border-radius: 10px;
+      background-color: #0a0a0a;
+      color: #fff;
+      font-size: 1rem;
+      font-family: 'Roboto Condensed', sans-serif;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #ff6b00;
+    }
+
+    .popup-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .popup-buttons button {
+      flex: 1;
+      padding: 0.8rem;
+      border-radius: 10px;
+      font-family: 'Bangers', cursive;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+      border: none;
+      transition: transform 0.2s;
+    }
+
+    .popup-buttons button:hover {
+      transform: scale(1.03);
+    }
+
+    .btn-submit {
+      background-color: #ff6b00;
+      color: #000;
+    }
+
+    .btn-cancel {
+      background-color: #333;
+      color: #fff;
+    }
+
+    .close-x {
+      position: absolute;
+      top: 1rem;
+      right: 1.2rem;
+      font-size: 1.5rem;
+      color: #888;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .close-x:hover {
+      color: #ff6b00;
+    }
+
+    /* Success message */
+    .success-msg {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .success-msg.active {
+      display: block;
+    }
+
+    .success-msg h3 {
+      font-family: 'Bangers', cursive;
+      font-size: 2rem;
+      color: #ff6b00;
+      margin-bottom: 0.5rem;
+    }
+
+    .success-msg p {
+      color: #ccc;
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .header h1 {
+        font-size: 1.6rem;
+      }
+      .leaf-symbol {
+        width: 45px;
+        height: 45px;
+      }
+      .cards-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="leaf-symbol">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M50 5 C50 5 20 25 20 55 C20 75 35 90 50 95 C65 90 80 75 80 55 C80 25 50 5 50 5 Z" fill="#2d5016" stroke="#1a3009" stroke-width="2"/>
+        <path d="M50 15 C50 15 30 30 30 55 C30 70 40 82 50 87 C60 82 70 70 70 55 C70 30 50 15 50 15 Z" fill="#4a7c23"/>
+        <path d="M50 25 L50 80" stroke="#2d5016" stroke-width="2"/>
+        <path d="M50 40 L35 30 M50 50 L30 45 M50 60 L35 55" stroke="#2d5016" stroke-width="1.5"/>
+        <path d="M50 40 L65 30 M50 50 L70 45 M50 60 L65 55" stroke="#2d5016" stroke-width="1.5"/>
+        <circle cx="50" cy="50" r="3" fill="#1a3009"/>
+      </svg>
+    </div>
+    <h1>HIDDEN LEAF VILLAGE</h1>
+  </header>
+
+  <main class="container">
+    <h2 class="section-title">TEAM 7</h2>
+
+    <div class="cards-grid">
+      <!-- Naruto -->
+      <div class="card">
+        <img class="card-image" src="https://i.pinimg.com/736x/2b/6e/91/2b6e91fc5d42d0d53f05e6d017d91b60.jpg" alt="Naruto Uzumaki" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22280%22%3E%3Crect fill=%22%23222%22 width=%22400%22 height=%22280%22/%3E%3Ctext fill=%22%23ff6b00%22 font-family=%22sans-serif%22 font-size=%2224%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ENaruto%3C/text%3E%3C/svg%3E'">
+        <div class="card-content">
+          <div class="card-name">Naruto Uzumaki</div>
+          <span class="card-rank">Genin / Hokage Dreamer</span>
+          <div class="stats">
+            <div class="stat-row"><span class="stat-label">Ninjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:80%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Taijutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:70%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Genjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:30%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Chakra</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:95%"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sasuke -->
+      <div class="card">
+        <img class="card-image" src="https://i.pinimg.com/736x/8a/6d/58/8a6d58d3f2a0325ce8aef4eb8c6a5f76.jpg" alt="Sasuke Uchiha" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22280%22%3E%3Crect fill=%22%23222%22 width=%22400%22 height=%22280%22/%3E%3Ctext fill=%22%23ff6b00%22 font-family=%22sans-serif%22 font-size=%2224%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ESasuke%3C/text%3E%3C/svg%3E'">
+        <div class="card-content">
+          <div class="card-name">Sasuke Uchiha</div>
+          <span class="card-rank">Genin / Avenger</span>
+          <div class="stats">
+            <div class="stat-row"><span class="stat-label">Ninjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:85%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Taijutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:80%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Genjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:75%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Chakra</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:80%"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sakura -->
+      <div class="card">
+        <img class="card-image" src="https://i.pinimg.com/736x/1a/2b/3c/1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d.jpg" alt="Sakura Haruno" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22280%22%3E%3Crect fill=%22%23222%22 width=%22400%22 height=%22280%22/%3E%3Ctext fill=%22%23ff6b00%22 font-family=%22sans-serif%22 font-size=%2224%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3ESakura%3C/text%3E%3C/svg%3E'">
+        <div class="card-content">
+          <div class="card-name">Sakura Haruno</div>
+          <span class="card-rank">Genin / Medical Ninja</span>
+          <div class="stats">
+            <div class="stat-row"><span class="stat-label">Ninjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:60%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Taijutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:65%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Genjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:70%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Chakra Control</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:90%"></div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Kakashi -->
+      <div class="card">
+        <img class="card-image" src="https://i.pinimg.com/736x/3c/4d/5e/3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f.jpg" alt="Kakashi Hatake" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22280%22%3E%3Crect fill=%22%23222%22 width=%22400%22 height=%22280%22/%3E%3Ctext fill=%22%23ff6b00%22 font-family=%22sans-serif%22 font-size=%2224%22 x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22%3EKakashi%3C/text%3E%3C/svg%3E'">
+        <div class="card-content">
+          <div class="card-name">Kakashi Hatake</div>
+          <span class="card-rank">Jonin / Copy Ninja</span>
+          <div class="stats">
+            <div class="stat-row"><span class="stat-label">Ninjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:95%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Taijutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:90%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Genjutsu</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:85%"></div></div></div>
+            <div class="stat-row"><span class="stat-label">Intelligence</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:95%"></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-container">
+      <button class="cta-button" onclick="openPopup()">JOIN TEAM 7</button>
+    </div>
+  </main>
+
+  <!-- Popup Form -->
+  <div class="popup-overlay" id="popup">
+    <div class="popup">
+      <span class="close-x" onclick="closePopup()">&times;</span>
+      <div id="popup-form">
+        <h2>JOIN TEAM 7</h2>
+        <div class="form-group">
+          <label for="name">Ninja Name</label>
+          <input type="text" id="name" placeholder="Enter your name">
+        </div>
+        <div class="form-group">
+          <label for="rank">Rank</label>
+          <select id="rank">
+            <option>Academy Student</option>
+            <option>Genin</option>
+            <option>Chunin</option>
+            <option>Jonin</option>
+            <option>Rogue Ninja</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="specialty">Specialty</label>
+          <select id="specialty">
+            <option>Ninjutsu</option>
+            <option>Taijutsu</option>
+            <option>Genjutsu</option>
+            <option>Medical Ninjutsu</option>
+            <option>Sealing Jutsu</option>
+          </select>
+        </div>
+        <div class="popup-buttons">
+          <button class="btn-submit" onclick="submitForm()">BELIEVE IT!</button>
+          <button class="btn-cancel" onclick="closePopup()">MAYBE LATER</button>
+        </div>
+      </div>
+      <div class="success-msg" id="success-msg">
+        <h3>WELCOME TO TEAM 7!</h3>
+        <p>Your application has been submitted. Report to the Hokage's office at dawn.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openPopup() {
+      document.getElementById('popup').classList.add('active');
+      document.getElementById('popup-form').style.display = 'block';
+      document.getElementById('success-msg').classList.remove('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closePopup() {
+      document.getElementById('popup').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function submitForm() {
+      const name = document.getElementById('name').value.trim();
+      if (!name) {
+        document.getElementById('name').style.borderColor = '#ff4444';
+        setTimeout(() => document.getElementById('name').style.borderColor = '', 2000);
+        return;
+      }
+      document.getElementById('popup-form').style.display = 'none';
+      document.getElementById('success-msg').classList.add('active');
+      setTimeout(closePopup, 2500);
+    }
+
+    document.getElementById('popup').addEventListener('click', function(e) {
+      if (e.target === this) closePopup();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closePopup();
+    });
+  </script>
+
+</body>
+</html>

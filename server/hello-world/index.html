@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hello World ✨</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Animated Gradient Background -->
+    <div class="gradient-bg"></div>
+
+    <!-- Floating particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Centered Greeting Card -->
+    <main class="card-container">
+        <div class="greeting-card">
+            <div class="card-shine"></div>
+            <h1 class="greeting-title">Hello World! 🌍</h1>
+            <p class="greeting-subtitle">Welcome to my awesome page</p>
+            <div class="emoji-bounce">👋 ✨ 🎉</div>
+            <button class="btn btn-primary" id="infoBtn">
+                <span>🎯 Fun Facts</span>
+            </button>
+            <button class="btn btn-secondary" id="confettiBtn">
+                <span>🎊 Celebrate!</span>
+            </button>
+        </div>
+    </main>
+
+    <!-- Welcome Popup (auto-shown on load) -->
+    <div class="popup-overlay" id="welcomePopup">
+        <div class="popup popup-welcome">
+            <div class="popup-header">
+                <span class="popup-emoji">🌟</span>
+                <h2>Welcome!</h2>
+            </div>
+            <div class="popup-body">
+                <p>Hey there! I'm your QA Lead agent. This page was built with 💖, CSS animations, and vanilla JavaScript!</p>
+                <p>Click the buttons below to explore interactive popups.</p>
+            </div>
+            <button class="btn btn-primary popup-close" data-popup="welcomePopup">
+                <span>Let's Go! 🚀</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Info Popup (fun facts) -->
+    <div class="popup-overlay" id="infoPopup">
+        <div class="popup popup-info">
+            <div class="popup-header">
+                <span class="popup-emoji">🧠</span>
+                <h2>Fun Facts!</h2>
+            </div>
+            <div class="popup-body">
+                <ul class="fun-facts">
+                    <li>🎨 The first website went live in <strong>1991</strong></li>
+                    <li>🐱 There are over <strong>1.9 billion</strong> websites today</li>
+                    <li>⚡ JavaScript was created in just <strong>10 days</strong></li>
+                    <li>🌈 CSS gradients are rendered by your GPU</li>
+                    <li>🎭 The term "Hello World" dates back to <strong>1972</strong></li>
+                </ul>
+            </div>
+            <button class="btn btn-secondary popup-close" data-popup="infoPopup">
+                <span>Cool! 😎</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Confetti Popup (celebration) -->
+    <div class="popup-overlay" id="confettiPopup">
+        <div class="popup popup-celebrate">
+            <div class="popup-header">
+                <span class="popup-emoji">🎉</span>
+                <h2>You Did It!</h2>
+            </div>
+            <div class="popup-body">
+                <p class="celebrate-text">🎊 Celebration time! 🎊</p>
+                <p>This popup is powered by pure JavaScript confetti!</p>
+                <div class="trophy">🏆</div>
+            </div>
+            <button class="btn btn-primary popup-close" data-popup="confettiPopup">
+                <span>Awesome! 🌟</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Confetti Canvas -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -16,6 +16,7 @@ import {
   issues,
   projects,
   projectWorkspaces,
+  taskRoutingDecisions,
 } from "@paperclipai/db";
 import { conflict, notFound } from "../errors.js";
 import { logger } from "../middleware/logger.js";
@@ -26,6 +27,7 @@ import type { AdapterExecutionResult, AdapterInvocationMeta, AdapterSessionCodec
 import { createLocalAgentJwt } from "../agent-auth-jwt.js";
 import { parseObject, asBoolean, asNumber, appendWithCap, MAX_EXCERPT_BYTES } from "../adapters/utils.js";
 import { costService } from "./costs.js";
+import { estimateCostFromTokens, getModelFallbackChain, isProviderFailoverEnabled, getFailoverMaxRetries, getFailoverRetryDelayMs, loadLatencyConfig, loadPromptCacheConfig, hashPrompt, promptSimilarity, recordModelPerformance, getAverageLatency, getPerformanceStats } from "../ai/router.js";
 import { trackAgentFirstHeartbeat } from "@paperclipai/shared/telemetry";
 import { getTelemetryClient } from "../telemetry.js";
 import { companySkillService } from "./company-skills.js";
@@ -44,6 +46,54 @@ import {
   type RealizedExecutionWorkspace,
   sanitizeRuntimeServiceBaseEnv,
 } from "./workspace-runtime.js";
+import { resolvePaperclipInstanceRoot } from "../home-paths.js";
+
+// ── Model Router Config ──────────────────────────────────────────────
+// Load token estimates from ~/.paperclip/model-router-config.json
+// Falls back to defaults if file is missing or invalid.
+
+const DEFAULT_TOKEN_ESTIMATES: Record<string, { input: number; output: number }> = {
+  low: { input: 5_000, output: 2_000 },
+  medium: { input: 20_000, output: 8_000 },
+  high: { input: 50_000, output: 25_000 },
+};
+
+let cachedTokenEstimates: Record<string, { input: number; output: number }> | null = null;
+let cachedTokenEstimatesMtime: number | null = null;
+
+async function loadTokenEstimates(): Promise<Record<string, { input: number; output: number }>> {
+  try {
+    const configPath = path.join(resolvePaperclipInstanceRoot(), "model-router-config.json");
+    const stat = await fs.stat(configPath).catch(() => null);
+    if (!stat) {
+      return DEFAULT_TOKEN_ESTIMATES;
+    }
+    if (cachedTokenEstimates && cachedTokenEstimatesMtime === stat.mtimeMs) {
+      return cachedTokenEstimates;
+    }
+    const raw = await fs.readFile(configPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    const estimates = parsed?.tokenEstimates;
+    if (estimates && typeof estimates === "object") {
+      // Validate shape
+      const validated: Record<string, { input: number; output: number }> = {};
+      for (const [key, val] of Object.entries(estimates)) {
+        const v = val as Record<string, unknown>;
+        if (typeof v.input === "number" && typeof v.output === "number") {
+          validated[key] = { input: v.input, output: v.output };
+        }
+      }
+      if (Object.keys(validated).length > 0) {
+        cachedTokenEstimates = validated;
+        cachedTokenEstimatesMtime = stat.mtimeMs;
+        return validated;
+      }
+    }
+  } catch (err) {
+    console.warn("[ModelRouter] Failed to load token estimates config:", err instanceof Error ? err.message : String(err));
+  }
+  return DEFAULT_TOKEN_ESTIMATES;
+}
 import { issueService } from "./issues.js";
 import { executionWorkspaceService, mergeExecutionWorkspaceConfig } from "./execution-workspaces.js";
 import { workspaceOperationService } from "./workspace-operations.js";
@@ -632,8 +682,17 @@ function parseIssueAssigneeAdapterOverrides(
 ): ParsedIssueAssigneeAdapterOverrides | null {
   const parsed = parseObject(raw);
   const parsedAdapterConfig = parseObject(parsed.adapterConfig);
+  // Filter out empty string values to prevent them from overwriting
+  // existing agent adapterConfig values during merge.
+  // Empty strings are sent by the UI when no override is selected.
+  const filteredAdapterConfig: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(parsedAdapterConfig)) {
+    if (value !== "" && value !== null && value !== undefined) {
+      filteredAdapterConfig[key] = value;
+    }
+  }
   const adapterConfig =
-    Object.keys(parsedAdapterConfig).length > 0 ? parsedAdapterConfig : null;
+    Object.keys(filteredAdapterConfig).length > 0 ? filteredAdapterConfig : null;
   const useProjectWorkspace =
     typeof parsed.useProjectWorkspace === "boolean"
       ? parsed.useProjectWorkspace
@@ -1738,6 +1797,122 @@ export function heartbeatService(db: Db) {
       .where(eq(agentWakeupRequests.id, wakeupRequestId));
   }
 
+  /**
+   * Update routing decision cost and latency when a heartbeat run completes.
+   * Links the run's actual cost (from usageJson.costUsd) to the routing decision.
+   * Falls back to token-based estimation if costUsd is not provided by adapter.
+   * Also records latency for future latency-aware routing.
+   */
+  async function updateRoutingDecisionCost(
+    issueId: string,
+    costUsd: number | null | undefined,
+    model: string | null | undefined,
+    inputTokens?: number,
+    outputTokens?: number,
+    latencyMs?: number,
+    outcome?: string,
+  ) {
+    try {
+      console.log("[RouterCost] Updating cost for issue", issueId, { costUsd, model, inputTokens, outputTokens });
+      const decision = await db
+        .select()
+        .from(taskRoutingDecisions)
+        .where(eq(taskRoutingDecisions.issueId, issueId))
+        .then((rows) => rows[0] ?? null);
+
+      if (!decision) {
+        console.log("[RouterCost] No routing decision found for issue", issueId);
+        return;
+      }
+
+      // Resolve model from routing decision -> agent config if not provided by adapter
+      // Prefer the adapter-reported model, then fall back to agent config, then default
+      let resolvedModel = model;
+      if (!resolvedModel && decision.routedAgentId) {
+        const agentRow = await db
+          .select({ adapterConfig: agents.adapterConfig })
+          .from(agents)
+          .where(eq(agents.id, decision.routedAgentId))
+          .then((rows) => rows[0] ?? null);
+        const adapterConfig = parseObject(agentRow?.adapterConfig);
+        resolvedModel = readNonEmptyString(adapterConfig?.model) ?? null;
+      }
+      resolvedModel = resolvedModel ?? "kimi-k2.5";
+
+      // Estimate tokens from complexity when adapter doesn't report usage
+      let finalInputTokens = inputTokens;
+      let finalOutputTokens = outputTokens;
+      if ((!finalInputTokens || !finalOutputTokens) && decision.complexity) {
+        const tokenEstimates = await loadTokenEstimates();
+        const complexityTokens = tokenEstimates[decision.complexity];
+        if (complexityTokens) {
+          finalInputTokens = finalInputTokens || complexityTokens.input;
+          finalOutputTokens = finalOutputTokens || complexityTokens.output;
+          console.log("[RouterCost] Estimated tokens from complexity", decision.complexity, complexityTokens, "(source: model-router-config.json)");
+        }
+      }
+
+      // Calculate cost from estimated tokens (for comparison logging)
+      const estimatedCostFromTokens = (finalInputTokens && finalOutputTokens)
+        ? estimateCostFromTokens(finalInputTokens, finalOutputTokens, resolvedModel)
+        : null;
+
+      let finalCostUsd = costUsd;
+      // If adapter didn't report cost, use token estimate
+      if ((finalCostUsd == null || finalCostUsd === 0) && estimatedCostFromTokens) {
+        finalCostUsd = estimatedCostFromTokens;
+      }
+      if (finalCostUsd == null || finalCostUsd === 0) {
+        console.log("[RouterCost] No cost to update");
+        return;
+      }
+
+      const costCents = Math.round(finalCostUsd * 100);
+
+      // Determine cost source for accuracy tracking
+      const hasAdapterData = costUsd != null && costUsd > 0;
+      const hasAdapterTokens = inputTokens != null && inputTokens > 0 && outputTokens != null && outputTokens > 0;
+      const source = hasAdapterData ? "adapter" : hasAdapterTokens ? "adapter_tokens" : "complexity_estimate";
+
+      // Log comparison: adapter-reported vs estimated (for accuracy analysis)
+      console.log(
+        `[RouterCost] issue=${issueId} model=${resolvedModel} complexity=${decision.complexity} ` +
+        `adapterCost=${costUsd ?? "null"} adapterTokens=${hasAdapterTokens ? `${inputTokens}/${outputTokens}` : "null"} ` +
+        `estimatedTokens=${finalInputTokens}/${finalOutputTokens} estimatedCost=${estimatedCostFromTokens?.toFixed(6) ?? "null"} ` +
+        `finalCents=${costCents} source=${source}`
+      );
+
+      // Record real-time performance data for future model selection
+      if (latencyMs && latencyMs > 0) {
+        const success = outcome === "succeeded" || outcome === "cancelled";
+        recordModelPerformance(
+          resolvedModel ?? "unknown",
+          latencyMs,
+          costCents,
+          inputTokens ?? 0,
+          outputTokens ?? 0,
+          success,
+        );
+      }
+
+      await db
+        .update(taskRoutingDecisions)
+        .set({
+          costEstimateCents: costCents,
+          classificationReason: decision.classificationReason + ` | model: ${resolvedModel ?? "unknown"}`,
+          agentInputTokens: inputTokens ?? null,
+          agentOutputTokens: outputTokens ?? null,
+          agentModel: resolvedModel ?? null,
+          costSource: source,
+          latencyMs: latencyMs ?? null,
+        })
+        .where(eq(taskRoutingDecisions.id, decision.id));
+    } catch (err) {
+      // Non-critical: don't fail the run if cost tracking fails
+      console.warn("[Heartbeat] Failed to update routing decision cost:", err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function appendRunEvent(
     run: typeof heartbeatRuns.$inferSelect,
     seq: number,
@@ -2676,6 +2851,43 @@ export function heartbeatService(db: Db) {
       : persistedWorkspaceManagedConfig;
     const configSnapshot = buildExecutionWorkspaceConfigSnapshot(mergedConfig);
     const executionRunConfig = stripWorkspaceRuntimeFromExecutionRunConfig(mergedConfig);
+
+    // ── Per-request model switching based on routing complexity ──
+    // Look up the routing decision for this issue and override the model
+    // based on complexity classification to optimize cost/performance.
+    let selectedModel: string | null = null;
+    if (issueId) {
+      try {
+        const routingDecision = await db
+          .select({ complexity: taskRoutingDecisions.complexity })
+          .from(taskRoutingDecisions)
+          .where(eq(taskRoutingDecisions.issueId, issueId))
+          .then((rows) => rows[0] ?? null);
+
+        if (routingDecision?.complexity) {
+          const { selectModelPareto } = await import("../ai/router.js");
+          const { model, frontier, selected } = await selectModelPareto(routingDecision.complexity as "simple" | "medium" | "complex");
+          selectedModel = model;
+          executionRunConfig.model = selectedModel;
+          // Record estimated latency and cost for this routing decision
+          try {
+            await db.update(taskRoutingDecisions)
+              .set({
+                estimatedLatencyMs: Math.round(selected.latencyMs),
+                estimatedCostCents: Math.round(selected.costPer1k * 10), // rough estimate for 10k tokens
+                paretoFrontierSize: frontier.length,
+              })
+              .where(eq(taskRoutingDecisions.issueId, issueId));
+          } catch (e) {
+            // Non-critical
+          }
+          console.log(`[ModelSwitch] issue=${issueId} complexity=${routingDecision.complexity} model=${selectedModel} frontier=${frontier.length} estLatency=${Math.round(selected.latencyMs)}ms cost=${selected.costPer1k}c/1k`);
+        }
+      } catch (err) {
+        console.log("[ModelSwitch] Failed to select model for complexity:", err instanceof Error ? err.message : String(err));
+      }
+    }
+
     const { resolvedConfig, secretKeys } = await resolveExecutionRunAdapterConfig({
       companyId: agent.companyId,
       executionRunConfig,
@@ -3133,19 +3345,116 @@ export function heartbeatService(db: Db) {
           "local agent jwt secret missing or invalid; running without injected PAPERCLIP_API_KEY",
         );
       }
-      const adapterResult = await adapter.execute({
-        runId: run.id,
-        agent,
-        runtime: runtimeForAdapter,
-        config: runtimeConfig,
-        context,
-        onLog,
-        onMeta: onAdapterMeta,
-        onSpawn: async (meta) => {
-          await persistRunProcessMetadata(run.id, meta);
-        },
-        authToken: authToken ?? undefined,
-      });
+
+      // ── Provider Failover: retry with fallback models on failure ──
+      let adapterResult: AdapterExecutionResult = {
+        exitCode: 1,
+        signal: null,
+        timedOut: false,
+        errorMessage: "Provider failover not executed",
+      };
+      let failoverAttempted = false;
+      const execRunConfig = executionRunConfig as Record<string, unknown>;
+      const originalModel = execRunConfig.model as string | undefined;
+      const fallbackChain = originalModel ? await getModelFallbackChain(originalModel) : [];
+      const failoverEnabled = await isProviderFailoverEnabled();
+      const maxRetries = await getFailoverMaxRetries();
+      const retryDelayMs = await getFailoverRetryDelayMs();
+      const modelsToTry = failoverEnabled && originalModel
+        ? [originalModel, ...fallbackChain]
+        : [originalModel ?? "default"];
+
+      for (let attempt = 0; attempt < modelsToTry.length; attempt++) {
+        const currentModel = modelsToTry[attempt];
+        const isFallback = attempt > 0;
+        const attemptConfig = { ...runtimeConfig, model: currentModel };
+
+        if (isFallback) {
+          failoverAttempted = true;
+          await onLog("stderr", `[ProviderFailover] Primary model ${originalModel} failed. Trying fallback: ${currentModel} (attempt ${attempt + 1}/${modelsToTry.length})\n`);
+          console.log(`[ProviderFailover] run=${run.id} fallback ${originalModel} → ${currentModel}`);
+        }
+
+        let lastError: Error | null = null;
+        let attemptResult: AdapterExecutionResult | null = null;
+
+        for (let retry = 0; retry <= maxRetries; retry++) {
+          if (retry > 0) {
+            await onLog("stderr", `[ProviderFailover] Retry ${retry}/${maxRetries} for model ${currentModel} after ${retryDelayMs}ms\n`);
+            await new Promise((r) => setTimeout(r, retryDelayMs));
+          }
+
+          try {
+            attemptResult = await adapter.execute({
+              runId: run.id,
+              agent,
+              runtime: runtimeForAdapter,
+              config: attemptConfig,
+              context,
+              onLog,
+              onMeta: onAdapterMeta,
+              onSpawn: async (meta) => {
+                await persistRunProcessMetadata(run.id, meta);
+              },
+              authToken: authToken ?? undefined,
+            });
+
+            // Success — check if it actually succeeded
+            const succeeded = (attemptResult.exitCode ?? 0) === 0 && !attemptResult.errorMessage && !attemptResult.timedOut;
+            if (succeeded) {
+              if (isFallback) {
+                await onLog("stderr", `[ProviderFailover] Fallback model ${currentModel} succeeded!\n`);
+              }
+              adapterResult = attemptResult;
+              break;
+            }
+
+            // Failed but no error thrown — treat as failure for failover purposes
+            lastError = new Error(attemptResult.errorMessage ?? `Exit code ${attemptResult.exitCode}`);
+
+            // If this is the last retry for this model, break to try next model
+            if (retry >= maxRetries) {
+              break;
+            }
+          } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+            if (retry >= maxRetries) {
+              break;
+            }
+          }
+        }
+
+        if (attemptResult && (attemptResult.exitCode ?? 0) === 0 && !attemptResult.errorMessage && !attemptResult.timedOut) {
+          adapterResult = attemptResult;
+          break;
+        }
+
+        // If no more models to try, use the last result
+        if (attempt >= modelsToTry.length - 1) {
+          adapterResult = attemptResult ?? {
+            exitCode: 1,
+            signal: null,
+            timedOut: false,
+            errorMessage: lastError?.message ?? "All provider failover attempts failed",
+          };
+        }
+      }
+
+      // Track failover in routing decision if we used a fallback
+      if (failoverAttempted && issueId && originalModel) {
+        try {
+          const finalModel = execRunConfig.model as string;
+          await db.update(taskRoutingDecisions)
+            .set({
+              failoverModel: finalModel,
+              failoverReason: `Primary model ${originalModel} failed, fell back to ${finalModel}`,
+              updatedAt: new Date(),
+            })
+            .where(eq(taskRoutingDecisions.issueId, issueId));
+        } catch (err) {
+          console.log("[ProviderFailover] Failed to track failover:", err instanceof Error ? err.message : String(err));
+        }
+      }
       const adapterManagedRuntimeServices = adapterResult.runtimeServices
         ? await persistAdapterManagedRuntimeServices({
             db,
@@ -3322,7 +3631,32 @@ export function heartbeatService(db: Db) {
           }
         }
         await finalizeIssueCommentPolicy(finalizedRun, agent);
+
+        // Resolve the issue linked to this run BEFORE releasing execution lock,
+        // because releaseIssueExecutionAndPromote clears issues.executionRunId.
+        const routingIssueId =
+          issueId ??
+          (await db
+            .select({ id: issues.id })
+            .from(issues)
+            .where(and(eq(issues.companyId, run.companyId), eq(issues.executionRunId, run.id)))
+            .then((rows) => rows[0]?.id ?? null));
+
         await releaseIssueExecutionAndPromote(finalizedRun);
+
+        // Update routing decision cost tracking
+        if (routingIssueId) {
+          const usageData = parseObject(finalizedRun.usageJson);
+          const costUsd = asNumber(usageData?.costUsd, 0) || null;
+          const model = String(usageData?.model ?? "");
+          const inputTokens = Math.max(0, Math.floor(asNumber(usageData?.inputTokens, asNumber(usageData?.rawInputTokens, 0))));
+          const outputTokens = Math.max(0, Math.floor(asNumber(usageData?.outputTokens, asNumber(usageData?.rawOutputTokens, 0))));
+          // Calculate latency from run duration
+          const latencyMs = finalizedRun.startedAt && finalizedRun.finishedAt
+            ? Math.max(0, new Date(finalizedRun.finishedAt).getTime() - new Date(finalizedRun.startedAt).getTime())
+            : undefined;
+          await updateRoutingDecisionCost(routingIssueId, costUsd, model || null, inputTokens || undefined, outputTokens || undefined, latencyMs, outcome);
+        }
       }
 
       if (finalizedRun) {

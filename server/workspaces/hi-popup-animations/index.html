@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hi Popup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1a1a2e;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Floating background particles */
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            animation: float 15s infinite;
+        }
+
+        .particle:nth-child(1) { left: 10%; animation-delay: 0s; }
+        .particle:nth-child(2) { left: 30%; animation-delay: 2s; }
+        .particle:nth-child(3) { left: 50%; animation-delay: 4s; }
+        .particle:nth-child(4) { left: 70%; animation-delay: 6s; }
+        .particle:nth-child(5) { left: 90%; animation-delay: 8s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-10vh) scale(1.5); opacity: 0; }
+        }
+
+        /* Main container */
+        .container {
+            text-align: center;
+            z-index: 10;
+        }
+
+        /* Hi button */
+        .hi-btn {
+            padding: 20px 50px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #fff;
+            background: #e94560;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            animation: pulse 2s infinite;
+        }
+
+        .hi-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(233, 69, 96, 0.6);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(233, 69, 96, 0.7); }
+            50% { box-shadow: 0 0 0 20px rgba(233, 69, 96, 0); }
+        }
+
+        /* Ripple effect on click */
+        .hi-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .hi-btn:active::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* Popup overlay */
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+            z-index: 100;
+        }
+
+        .popup-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Popup card */
+        .popup-card {
+            background: #16213e;
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            transform: scale(0.5) rotate(-10deg);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 2px solid #e94560;
+        }
+
+        .popup-overlay.active .popup-card {
+            transform: scale(1) rotate(0deg);
+        }
+
+        .popup-card h2 {
+            color: #e94560;
+            font-size: 3rem;
+            margin-bottom: 10px;
+            animation: bounceIn 0.6s ease 0.3s both;
+        }
+
+        .popup-card p {
+            color: #a0a0a0;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+        }
+
+        .popup-card .wave {
+            font-size: 4rem;
+            display: inline-block;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        @keyframes wave {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(20deg); }
+            75% { transform: rotate(-20deg); }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Close button */
+        .close-btn {
+            margin-top: 20px;
+            padding: 10px 30px;
+            font-size: 1rem;
+            color: #fff;
+            background: #0f3460;
+            border: 2px solid #e94560;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .close-btn:hover {
+            background: #e94560;
+            transform: translateY(-2px);
+        }
+
+        /* Title on page */
+        .page-title {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 1.5rem;
+            opacity: 0.7;
+            animation: fadeInDown 1s ease;
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 0.7; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+    <div class="particle"></div>
+
+    <div class="page-title">Click the button!</div>
+
+    <div class="container">
+        <button class="hi-btn" onclick="showPopup()">Say Hi!</button>
+    </div>
+
+    <div class="popup-overlay" id="popup" onclick="hidePopup(event)">
+        <div class="popup-card" onclick="event.stopPropagation()">
+            <div class="wave">👋</div>
+            <h2>Hi there!</h2>
+            <p>Thanks for clicking! Have an awesome day!</p>
+            <button class="close-btn" onclick="hidePopup()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        function showPopup() {
+            document.getElementById('popup').classList.add('active');
+        }
+
+        function hidePopup(event) {
+            document.getElementById('popup').classList.remove('active');
+        }
+    </script>
+</body>
+</html>

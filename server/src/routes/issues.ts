@@ -330,6 +330,7 @@ export function issueRoutes(
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);
     const assigneeUserFilterRaw = req.query.assigneeUserId as string | undefined;
+    const createdByUserFilterRaw = req.query.createdByUserId as string | undefined;
     const touchedByUserFilterRaw = req.query.touchedByUserId as string | undefined;
     const inboxArchivedByUserFilterRaw = req.query.inboxArchivedByUserId as string | undefined;
     const unreadForUserFilterRaw = req.query.unreadForUserId as string | undefined;
@@ -337,6 +338,10 @@ export function issueRoutes(
       assigneeUserFilterRaw === "me" && req.actor.type === "board"
         ? req.actor.userId
         : assigneeUserFilterRaw;
+    const createdByUserId =
+      createdByUserFilterRaw === "me" && req.actor.type === "board"
+        ? req.actor.userId
+        : createdByUserFilterRaw;
     const touchedByUserId =
       touchedByUserFilterRaw === "me" && req.actor.type === "board"
         ? req.actor.userId
@@ -355,6 +360,10 @@ export function issueRoutes(
 
     if (assigneeUserFilterRaw === "me" && (!assigneeUserId || req.actor.type !== "board")) {
       res.status(403).json({ error: "assigneeUserId=me requires board authentication" });
+      return;
+    }
+    if (createdByUserFilterRaw === "me" && (!createdByUserId || req.actor.type !== "board")) {
+      res.status(403).json({ error: "createdByUserId=me requires board authentication" });
       return;
     }
     if (touchedByUserFilterRaw === "me" && (!touchedByUserId || req.actor.type !== "board")) {
@@ -379,6 +388,7 @@ export function issueRoutes(
       assigneeAgentId: req.query.assigneeAgentId as string | undefined,
       participantAgentId: req.query.participantAgentId as string | undefined,
       assigneeUserId,
+      createdByUserId,
       touchedByUserId,
       inboxArchivedByUserId,
       unreadForUserId,
@@ -2311,6 +2321,34 @@ export function issueRoutes(
     });
 
     res.json({ ok: true });
+  });
+
+  // Issue progress endpoint for AI Chatbot task tracking
+  router.get("/issues/:id/progress", async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await svc.getById(id);
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    assertCompanyAccess(req, issue.companyId);
+
+    // Resolve assignee name
+    let assigneeName: string | null = null;
+    if (issue.assigneeAgentId) {
+      const agent = await agentService(db).getById(issue.assigneeAgentId);
+      assigneeName = agent?.name ?? null;
+    }
+
+    res.json({
+      id: issue.id,
+      identifier: issue.identifier,
+      status: issue.status,
+      assigneeAgentId: issue.assigneeAgentId,
+      assigneeUserId: issue.assigneeUserId,
+      assigneeName,
+      updatedAt: issue.updatedAt,
+    });
   });
 
   return router;

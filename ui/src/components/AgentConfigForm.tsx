@@ -278,7 +278,16 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
       patch.adapterConfig = { ...preserved, ...overlay.adapterConfig };
     } else if (Object.keys(overlay.adapterConfig).length > 0) {
       const existing = (agent.adapterConfig ?? {}) as Record<string, unknown>;
-      patch.adapterConfig = { ...existing, ...overlay.adapterConfig };
+      // Filter out empty string values from overlay to prevent them from
+      // overwriting existing config values. Empty strings are often set by
+      // the UI when clearing a field, but they shouldn't erase existing config.
+      const filteredOverlay: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(overlay.adapterConfig)) {
+        if (value !== "" && value !== null && value !== undefined) {
+          filteredOverlay[key] = value;
+        }
+      }
+      patch.adapterConfig = { ...existing, ...filteredOverlay };
     }
     if (Object.keys(overlay.heartbeat).length > 0) {
       const existingRc = (agent.runtimeConfig ?? {}) as Record<string, unknown>;
